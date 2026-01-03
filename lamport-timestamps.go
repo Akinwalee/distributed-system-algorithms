@@ -79,23 +79,61 @@ func TestConcurrentSends() {
 	fmt.Printf("\nFinal state: A=%d, B=%d, C=%d\n", A.counter, B.counter, C.counter)
 }
 
+func TestLargeMultipleEvents(size int) {
+	processes := make([]*Process, size)
+
+	for i := range size {
+		processes[i] = NewProcess(fmt.Sprintf("P%d", i))
+	}
+
+	for i := range size {
+		processes[i].LocalEvent()
+	}
+	messages := make([][]Message, size)
+
+	for i := range size {
+		messages[i] = make([]Message, size)
+	}
+
+	for i := range size {
+		for j := range size {
+			if i != j {
+				messages[i][j] = processes[i].SendMessage(fmt.Sprintf("Message from P%d to P%d", i, j))
+			}
+		}
+	}
+
+	for i := range size {
+		for j := range size {
+			if i != j {
+				processes[i].ReceiveMessage(messages[j][i])
+			}
+		}
+	}
+
+	for i := range size {
+		fmt.Printf("Final state: P%d=%d\n", i, processes[i].counter)
+	}
+}
+
 func main() {
-	A := NewProcess("A")
-	B := NewProcess("B")
-	C := NewProcess("C")
+	// A := NewProcess("A")
+	// B := NewProcess("B")
+	// C := NewProcess("C")
 
-	A.LocalEvent()
+	// A.LocalEvent()
 
-	msg1 := A.SendMessage("Hello from A")
-	B.ReceiveMessage(msg1)
+	// msg1 := A.SendMessage("Hello from A")
+	// B.ReceiveMessage(msg1)
 
-	msg2 := B.SendMessage("Hello from B")
-	C.ReceiveMessage(msg2)
+	// msg2 := B.SendMessage("Hello from B")
+	// C.ReceiveMessage(msg2)
 
-	msg3 := C.SendMessage("Hello from C")
-	A.ReceiveMessage(msg3)
+	// msg3 := C.SendMessage("Hello from C")
+	// A.ReceiveMessage(msg3)
 
-	fmt.Printf("\nFinal state: A=%d, B=%d, C=%d\n", A.counter, B.counter, C.counter)
+	// fmt.Printf("\nFinal state: A=%d, B=%d, C=%d\n", A.counter, B.counter, C.counter)
 
-	TestConcurrentSends()
+	// TestConcurrentSends()
+	TestLargeMultipleEvents(500)
 }
