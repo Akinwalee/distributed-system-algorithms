@@ -22,40 +22,51 @@ class LamportClock:
         return f"{self.node_id} at Time: {self.value}"
         
     
-def process(node_id: str, queues: dict, peer_id: str):
+def process(node_id: str, queues: dict, actions: list):
     clock = LamportClock(node_id)
     my_queue = queues[node_id]
 
-    clock.increment()
-    print(f"{clock} performed local action")
-
-    if node_id == 'Alice':
-        for msg in ["Why did the functions stop calling one another?","Because they had too many arguments"]:
+    for action in actions:
+        if action['type'] == 'send':
             timestamp = clock.increment()
             message = {
-                "data": msg,
+                "data": action['data'],
                 "timestamp": timestamp
             }
             print(f"{clock} sennding: {message.get('data')}")
-            queues[peer_id].put(message)
+            queues[action['to']].put(message)
 
-    if node_id == 'Bob':
-        message = my_queue.get()
-        clock.update(message['timestamp'])
-        print(f"{clock} received: {message.get('data')} sent at time {message.get('timestamp')}")
+        elif action['type'] == 'receive':
+            message = my_queue.get()
+            clock.update(message['timestamp'])
+            print(f"{clock} received: {message.get('data')} sent at time {message.get('timestamp')}")
+        
+        elif action['type'] == 'local':
+            clock.increment()
+            print(f"{clock} performed local action: {action.get('data', '')}")
 
-        message = my_queue.get()
-        clock.update(message['timestamp'])
-        print(f"{clock} received: {message.get('data')} sent at time {message.get('timestamp')}")
 
+if __name__ == '__main__':
+    alice_actions = [
+    {'type': 'local', 'data': 'computing the number of stars in the universe...'},
+    {'type': 'send', 'to': 'Bob', 'data': 'Why did the functions stop calling each other?'},
+    {'type': 'send', 'to': 'Bob', 'data': 'Because they had too many arguments'}
+    ]
 
-queues = {
-    "Alice": queue.Queue(),
-    "Bob": queue.Queue()
-}
+    bob_actions = [
+        {'type': 'receive'},
+        {'type': 'local', 'data': 'solving climate change...'},
+        {'type': 'receive'},
+        {'type': 'send', 'to': 'Alice', 'data': 'LOL!'}
+    ]
 
-first_thread = threading.Thread(target=process, args=("Alice", queues, "Bob"))
-second_thread = threading.Thread(target=process, args=("Bob", queues, "Alice"))
+    queues = {
+        "Alice": queue.Queue(),
+        "Bob": queue.Queue()
+    }
 
-first_thread.start()
-second_thread.start()
+    alice_thread = threading.Thread(target=process, args=("Alice", queues, alice_actions))
+    bob_thread = threading.Thread(target=process, args=("Bob", queues, bob_actions))
+
+    alice_thread.start()
+    bob_thread.start()
